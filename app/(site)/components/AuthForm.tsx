@@ -7,6 +7,9 @@ import { BsGithub, BsGoogle } from "react-icons/bs";
 import Input from "./inputs/Input";
 import Button from "./Button";
 import AuthSocialButton from "./AuthSocialButton";
+import axios from "axios";
+import toast from "react-hot-toast";
+import { signIn } from "next-auth/react";
 
 type Variant = "LOGIN" | "REGISTER";
 
@@ -34,13 +37,37 @@ const AuthForm = () => {
     setIsLoading(true);
 
     if (variant === "REGISTER") {
+      axios
+        .post("/api/register", data)
+        .catch(() => toast.error("Something went wrong!"))
+        .finally(() => setIsLoading(false));
     }
     if (variant === "LOGIN") {
+      signIn("credentials", { ...data, redirect: false })
+        .then((callback) => {
+          if (callback?.error) {
+            toast.error("Invalid credentials");
+          }
+          if (callback?.ok && !callback?.error) {
+            toast.success("Logged in!");
+          }
+        })
+        .finally(() => setIsLoading(false));
     }
   };
 
   const socialAction = (action: string) => {
     setIsLoading(true);
+    signIn(action, { redirect: false })
+      .then((callback) => {
+        if (callback?.error) {
+          toast.error("Invalid Credentials");
+        }
+        if (callback?.ok && !callback?.error) {
+          toast.success("Logged in!");
+        }
+      })
+      .finally(() => setIsLoading(false));
   };
   return (
     <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
@@ -48,12 +75,12 @@ const AuthForm = () => {
         <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
           {variant === "REGISTER" && (
             <Input
-              id="email"
-              label="Email"
-              type="email"
+              disabled={isLoading}
               register={register}
               errors={errors}
-              disabled={isLoading}
+              required
+              id="name"
+              label="Name"
             />
           )}
           <Input id="email" label="Email" register={register} errors={errors} />
