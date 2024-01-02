@@ -7,19 +7,18 @@ export async function POST(request: Request) {
   try {
     const currentUser = await getCurrentUser();
     const body = await request.json();
-
     const { userId, isGroup, members, name } = body;
 
     if (!currentUser?.id || !currentUser?.email) {
-      return new NextResponse("Unathorized", { status: 401 });
+      return new NextResponse("Unauthorized", { status: 400 });
     }
 
-    if (isGroup && (!members || members.lengts < 2 || name)) {
+    if (isGroup && (!members || members.length < 2 || !name)) {
       return new NextResponse("Invalid data", { status: 400 });
     }
 
     if (isGroup) {
-      const newConwersation = await prisma.conversation.create({
+      const newConversation = await prisma.conversation.create({
         data: {
           name,
           isGroup,
@@ -28,7 +27,9 @@ export async function POST(request: Request) {
               ...members.map((member: { value: string }) => ({
                 id: member.value,
               })),
-              { id: currentUser.id },
+              {
+                id: currentUser.id,
+              },
             ],
           },
         },
@@ -36,10 +37,10 @@ export async function POST(request: Request) {
           users: true,
         },
       });
-      return NextResponse.json(newConwersation);
+      return NextResponse.json(newConversation);
     }
 
-    const exisitingConversations = await prisma.conversation.findMany({
+    const existingConversations = await prisma.conversation.findMany({
       where: {
         OR: [
           {
@@ -55,15 +56,29 @@ export async function POST(request: Request) {
         ],
       },
     });
-    const singleConversation = exisitingConversations[0];
+
+    const singleConversation = existingConversations[0];
 
     if (singleConversation) {
       return NextResponse.json(singleConversation);
     }
 
     const newConversation = await prisma.conversation.create({
-      data: { users: { connect: [{ id: currentUser.id }, { id: userId }] } },
-      include: { users: true },
+      data: {
+        users: {
+          connect: [
+            {
+              id: currentUser.id,
+            },
+            {
+              id: userId,
+            },
+          ],
+        },
+      },
+      include: {
+        users: true,
+      },
     });
     return NextResponse.json(newConversation);
   } catch (error: any) {
